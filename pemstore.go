@@ -11,10 +11,12 @@ type AwsSsmStore struct {
 	ssm *ssm.SSM
 }
 
-func New(profile string, mfaEnabled bool) *AwsSsmStore {
+func New(profile *string, mfaEnabled bool) *AwsSsmStore {
 	options := session.Options{
-		Profile:           profile,
 		SharedConfigState: session.SharedConfigEnable,
+	}
+	if profile != nil {
+		options.Profile = aws.StringValue(profile)
 	}
 	if mfaEnabled {
 		options.AssumeRoleTokenProvider = stscreds.StdinTokenProvider
@@ -85,8 +87,8 @@ func (p AwsSsmStore) Exists(key string) (bool, error) {
 
 func (p AwsSsmStore) Store(key string, data []byte, overwrite bool) error {
 	_, err := p.ssm.PutParameter(&ssm.PutParameterInput{
-		Type: aws.String("SecureString"),
-		Name: aws.String(key),
+		Type:  aws.String("SecureString"),
+		Name:  aws.String(key),
 		Value: aws.String(string(data)),
 	})
 	return err
