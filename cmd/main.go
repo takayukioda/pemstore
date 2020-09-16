@@ -9,14 +9,21 @@ import (
 	"github.com/takayukioda/pemstore"
 )
 
-const DEFAULT_PROFILE = "athletics"
-
 func usage() string {
-	return "[-profile <profile>]"
+	return "pemstore [-profile <profile>] <get / list / store>"
 }
+
+const (
+	EXIT_OK          = 0
+	EXIT_ERR_UNKNOWN = 1
+	EXIT_ERR_KNOWN   = 2
+)
 
 func main() {
 	profile := flag.String("profile", "", "AWS profile to use")
+	mfa := flag.Bool("mfa", false, "MFA enabled")
+	// TODO: Move them into sub command option
+	force := flag.Bool("force", false, "Do action forcefully; avaialble for store and delete")
 	flag.Parse()
 	args := flag.Args()
 
@@ -25,10 +32,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if profile == nil {
-		*profile = DEFAULT_PROFILE
-	}
-	store := pemstore.New(profile, true)
+	store := pemstore.New(profile, *mfa, nil)
 
 	switch args[0] {
 	case "get":
@@ -39,26 +43,29 @@ func main() {
 		}
 		if !exists {
 			log.Println("Couldn't find specified key:", key)
+			os.Exit(EXIT_ERR_KNOWN)
 		}
 		value, err := store.Get(key, true)
 		if err != nil {
 			log.Fatalln("Failure during getting process", err)
 		}
 		fmt.Println(value)
-		os.Exit(0)
-	case "put":
+		os.Exit(EXIT_OK)
+	case "store":
+		// FIXME: Fix to store pem key
 		key := args[1]
 		exists, err := store.Exists(key)
 		if err != nil {
 			log.Fatalln(err)
 		}
-		if exists {
-			log.Fatalln("Specified key already exists:", key)
+		if exists && !(*force) {
+			log.Println("Specified key already exists:", key)
+			os.Exit(EXIT_ERR_KNOWN)
 		}
 		if err := store.Store(key, []byte("Some random text"), false); err != nil {
 			log.Fatalln("Failure during storing process", err)
 		}
-	default:
+	case "list":
 		keys, err := store.List()
 		if err != nil {
 			log.Fatalln("Failure during listing process", err)
@@ -66,14 +73,28 @@ func main() {
 		for _, key := range keys {
 			fmt.Println(key)
 		}
-		os.Exit(0)
+	case "delete":
+		key := args[1]
+		exists, err := store.Exists(key)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		if !exists {
+			log.Println("Specfied key not found:", key)
+			os.Exit(EXIT_ERR_KNOWN)
+		}
+		if !(*force) {
+			log.Println("Found specified key:", key)
+			log.Println("Add `-force` option to delete")
+			os.Exit(EXIT_OK)
+		}
+		if err := store.Remove(key); err != nil {
+			log.Fatalln("Failure during deleting process", err)
+		}
+		fmt.Println("Deleted pem:", key)
+		os.Exit(EXIT_OK)
+	default:
+		usage()
+		os.Exit(EXIT_ERR_KNOWN)
 	}
-
-	/*
-	key := "pemstore-test"
-	fmt.Println("Not exists; storing value")
-	if err := store.Store(key, []byte("Some random text"), false); err != nil {
-		log.Fatalln("Failure during storing process", err)
-	}
-	*/
 }

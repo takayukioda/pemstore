@@ -7,32 +7,55 @@ import (
 	"github.com/aws/aws-sdk-go/service/ssm"
 )
 
-type AwsSsmStore struct {
-	ssm *ssm.SSM
+type awsSsmStore struct {
+	ssm    *ssm.SSM
+	prefix string
 }
 
-func New(profile *string, mfaEnabled bool) *AwsSsmStore {
+const DEFAULT_STORE_PREFIX = "pemstore"
+const DEFAULT_PROFILE = "default"
+const PREFIX_DELIMITER = "/"
+
+func New(profile *string, mfaEnabled bool, prefix *string) *awsSsmStore {
 	options := session.Options{
+		Profile:           DEFAULT_PROFILE,
 		SharedConfigState: session.SharedConfigEnable,
 	}
-	if profile != nil {
+	if profile != nil && *profile != "" {
 		options.Profile = aws.StringValue(profile)
 	}
 	if mfaEnabled {
 		options.AssumeRoleTokenProvider = stscreds.StdinTokenProvider
 	}
+
+	storePrefix := DEFAULT_STORE_PREFIX
+	if prefix != nil && *prefix != "" {
+		storePrefix = *prefix
+	}
+
 	sess := session.Must(session.NewSessionWithOptions(options))
-	return &AwsSsmStore{
-		ssm: ssm.New(sess),
+	return &awsSsmStore{
+		ssm:    ssm.New(sess),
+		prefix: storePrefix,
 	}
 }
 
-func (p AwsSsmStore) listParameters(params []*ssm.ParameterMetadata, token *string, initial bool) ([]*ssm.ParameterMetadata, error) {
+func (p awsSsmStore) storeKey(suffix string) string {
+	return PREFIX_DELIMITER + p.prefix + PREFIX_DELIMITER + suffix
+}
+
+func (p awsSsmStore) listParameters(params []*ssm.ParameterMetadata, token *string, initial bool) ([]*ssm.ParameterMetadata, error) {
 	if !initial && token == nil {
 		return params, nil
 	}
+	filter := &ssm.ParameterStringFilter{
+		Key:    aws.String("Name"),
+		Option: aws.String("BeginsWith"),
+		Values: aws.StringSlice([]string{p.storeKey("")}),
+	}
 	output, err := p.ssm.DescribeParameters(&ssm.DescribeParametersInput{
-		NextToken: token,
+		NextToken:        token,
+		ParameterFilters: []*ssm.ParameterStringFilter{filter},
 	})
 	if err != nil {
 		return nil, err
@@ -46,7 +69,7 @@ func (p AwsSsmStore) listParameters(params []*ssm.ParameterMetadata, token *stri
 	return p.listParameters(params, output.NextToken, false)
 }
 
-func (p AwsSsmStore) List() ([]string, error) {
+func (p awsSsmStore) List() ([]string, error) {
 	params, err := p.listParameters(nil, nil, true)
 	if err != nil {
 		return nil, err
@@ -60,9 +83,9 @@ func (p AwsSsmStore) List() ([]string, error) {
 	return names, nil
 }
 
-func (p AwsSsmStore) Get(key string, decryption bool) (string, error) {
+func (p awsSsmStore) Get(key string, decryption bool) (string, error) {
 	output, err := p.ssm.GetParameter(&ssm.GetParameterInput{
-		Name:           aws.String(key),
+		Name:           aws.String(p.storeKey(key)),
 		WithDecryption: aws.Bool(decryption),
 	})
 	if err != nil {
@@ -71,10 +94,10 @@ func (p AwsSsmStore) Get(key string, decryption bool) (string, error) {
 	return aws.StringValue(output.Parameter.Value), nil
 }
 
-func (p AwsSsmStore) Exists(key string) (bool, error) {
+func (p awsSsmStore) Exists(key string) (bool, error) {
 	filter := ssm.ParameterStringFilter{
 		Key:    aws.String("Name"),
-		Values: aws.StringSlice([]string{key}),
+		Values: aws.StringSlice([]string{p.storeKey(key)}),
 	}
 	output, err := p.ssm.DescribeParameters(&ssm.DescribeParametersInput{
 		ParameterFilters: []*ssm.ParameterStringFilter{&filter},
@@ -85,18 +108,18 @@ func (p AwsSsmStore) Exists(key string) (bool, error) {
 	return len(output.Parameters) != 0, nil
 }
 
-func (p AwsSsmStore) Store(key string, data []byte, overwrite bool) error {
+func (p awsSsmStore) Store(key string, data []byte, overwrite bool) error {
 	_, err := p.ssm.PutParameter(&ssm.PutParameterInput{
 		Type:  aws.String("SecureString"),
-		Name:  aws.String(key),
+		Name:  aws.String(p.storeKey(key)),
 		Value: aws.String(string(data)),
 	})
 	return err
 }
 
-func (p AwsSsmStore) Remove(key string) error {
+func (p awsSsmStore) Remove(key string) error {
 	_, err := p.ssm.DeleteParameter(&ssm.DeleteParameterInput{
-		Name: aws.String(key),
+		Name: aws.String(p.storeKey(key)),
 	})
 	return err
 }
