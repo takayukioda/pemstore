@@ -1,3 +1,6 @@
+# Command binary
+pemstore
+
 # Configuration file
 .envrc
 
