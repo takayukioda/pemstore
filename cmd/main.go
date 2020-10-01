@@ -29,6 +29,10 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 
+	if *profile == "" {
+		*profile = os.Getenv("AWS_PROFILE")
+	}
+
 	storepath := filepath.Join(os.Getenv("HOME"), ".ssh", "pemstore")
 	if _, err := os.Stat(storepath); os.IsNotExist(err) {
 		if err := os.MkdirAll(storepath, 0755); err != nil {
