@@ -110,9 +110,10 @@ func (p awsSsmStore) Exists(key string) (bool, error) {
 
 func (p awsSsmStore) Store(key string, data []byte, overwrite bool) error {
 	_, err := p.ssm.PutParameter(&ssm.PutParameterInput{
-		Type:  aws.String("SecureString"),
-		Name:  aws.String(p.storeKey(key)),
-		Value: aws.String(string(data)),
+		Type:      aws.String("SecureString"),
+		Name:      aws.String(p.storeKey(key)),
+		Value:     aws.String(string(data)),
+		Overwrite: aws.Bool(overwrite),
 	})
 	return err
 }
