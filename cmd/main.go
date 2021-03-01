@@ -69,7 +69,7 @@ func main() {
 			log.Println("Couldn't find specified key:", key)
 			os.Exit(EXIT_ERR_KNOWN)
 		}
-		value, err := store.Get(key, true)
+		value, err := store.Download(key, true)
 		if err != nil {
 			log.Println("Failure during getting process", err)
 			os.Exit(EXIT_ERR_UNKNOWN)
