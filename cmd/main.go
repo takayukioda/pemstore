@@ -51,7 +51,7 @@ func main() {
 		os.Exit(EXIT_ERR_KNOWN)
 	}
 
-	store := pemstore.New(profile, *mfa, nil)
+	var store pemstore.PemStore = pemstore.New(profile, *mfa, nil)
 
 	switch args[0] {
 	case "get":
