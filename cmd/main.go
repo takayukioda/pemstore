@@ -71,12 +71,12 @@ func main() {
 			log.Println("Couldn't find specified key:", key)
 			os.Exit(EXIT_ERR_KNOWN)
 		}
-		value, err := store.Download(key, true)
+		value, err := store.Get(key, true)
 		if err != nil {
 			log.Println("Failure during getting process", err)
 			os.Exit(EXIT_ERR_UNKNOWN)
 		}
-		if err := ioutil.WriteFile(path, []byte(value), 0600); err != nil {
+		if err := ioutil.WriteFile(path, value, 0600); err != nil {
 			log.Println("Failure during writing file process", err)
 			os.Exit(EXIT_ERR_UNKNOWN)
 		}

@@ -83,15 +83,15 @@ func (p ssmStore) List() ([]string, error) {
 	return names, nil
 }
 
-func (p ssmStore) Download(key string, decryption bool) (string, error) {
+func (p ssmStore) Get(key string, decryption bool) ([]byte, error) {
 	output, err := p.ssm.GetParameter(&ssm.GetParameterInput{
 		Name:           aws.String(p.storeKey(key)),
 		WithDecryption: aws.Bool(decryption),
 	})
 	if err != nil {
-		return "", err
+		return []byte(""), err
 	}
-	return aws.StringValue(output.Parameter.Value), nil
+	return []byte(aws.StringValue(output.Parameter.Value)), nil
 }
 
 func (p ssmStore) Exists(key string) (bool, error) {
