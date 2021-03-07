@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -35,7 +36,7 @@ func main() {
 	}
 
 	storepath := filepath.Join(os.Getenv("HOME"), ".ssh", "pemstore")
-	if _, err := os.Stat(storepath); os.IsNotExist(err) {
+	if _, err := os.Stat(storepath); errors.Is(os.ErrNotExist, err) {
 		if err := os.MkdirAll(storepath, 0755); err != nil {
 			log.Println("Failed to create pemstore at", storepath)
 			os.Exit(EXIT_ERR_KNOWN)
@@ -57,7 +58,7 @@ func main() {
 		key := args[1]
 		path := filepath.Join(storepath, key)
 
-		if _, err := os.Stat(path); !os.IsNotExist(err) {
+		if _, err := os.Stat(path); !errors.Is(os.ErrNotExist, err) {
 			log.Println("File already exists; clean before get:", path)
 			os.Exit(EXIT_ERR_KNOWN)
 		}
@@ -105,7 +106,7 @@ func main() {
 			os.Exit(EXIT_ERR_KNOWN)
 		}
 
-		if _, err := os.Stat(path); os.IsNotExist(err) {
+		if _, err := os.Stat(path); errors.Is(os.ErrNotExist, err) {
 			log.Println("No such file: ", path)
 			os.Exit(EXIT_ERR_KNOWN)
 		}
@@ -136,7 +137,7 @@ func main() {
 	case "clean":
 		key := args[1]
 		path := filepath.Join(storepath, key)
-		if _, err := os.Stat(path); os.IsNotExist(err) {
+		if _, err := os.Stat(path); errors.Is(os.ErrNotExist, err) {
 			log.Println("No file to clean up", path)
 			os.Exit(EXIT_OK)
 		}
