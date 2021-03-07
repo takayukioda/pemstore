@@ -5,7 +5,7 @@ type PemStore interface {
 
 	Exists(key string) (bool, error)
 
-	Download(key string, decryption bool) (string, error)
+	Get(key string, decryption bool) ([]byte, error)
 
 	Store(key string, data []byte, overwrite bool) error
 
