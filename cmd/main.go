@@ -11,10 +11,6 @@ import (
 	"github.com/takayukioda/pemstore"
 )
 
-func usage() string {
-	return "pemstore [-profile <profile>] <get / list / store>"
-}
-
 const (
 	EXIT_OK          = 0
 	EXIT_ERR_KNOWN   = 1
@@ -22,6 +18,11 @@ const (
 )
 
 func main() {
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "%s [-profile <profile>] <get / list / store>\n", os.Args[0])
+		flag.PrintDefaults()
+	}
+
 	profile := flag.String("profile", "", "AWS profile to use")
 	mfa := flag.Bool("mfa", false, "MFA enabled")
 	// TODO: Move them into sub command option
@@ -45,7 +46,7 @@ func main() {
 	}
 
 	if len(args) < 1 {
-		fmt.Println(usage())
+		flag.Usage()
 		os.Exit(EXIT_ERR_KNOWN)
 	}
 
@@ -173,7 +174,7 @@ func main() {
 		fmt.Println("Deleted pem:", key)
 		os.Exit(EXIT_OK)
 	default:
-		usage()
+		flag.Usage()
 		os.Exit(EXIT_ERR_KNOWN)
 	}
 }
